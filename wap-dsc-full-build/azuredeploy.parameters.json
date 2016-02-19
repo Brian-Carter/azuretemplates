@@ -1,0 +1,87 @@
+﻿{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+  "parameters": {
+    "assetLocation": {
+      "value": "https://raw.githubusercontent.com/Brian-Carter/azuretemplates/master/wap-dsc-full-build/"
+    },
+    "wapAdminUsername": {
+      "value": "admin123"
+    },
+    "wapAdminPassword": {
+      "value": ""
+    },
+    "wapAvailabilitySetName": {
+      "value": "AVS-WAP"
+    },
+    "wap01VMName": {
+      "value": "WAP01"
+    },
+    "wap01NetworkInterfaceName": {
+      "value": "NIC-WAP01"
+    },
+    "wap01StaticIP": {
+      "value": "10.0.2.20"
+    },
+    "wap02VMName": {
+      "value": "WAP02"
+    },
+    "wap02NetworkInterfaceName": {
+      "value": "NIC-WAP02"
+    },
+    "wap02StaticIP": {
+      "value": "10.0.2.21"
+    },
+    "dnsNameforWAPLBIP": {
+      "value": "waploadbalancedip"
+    },
+    "wapPublicIPAddressName": {
+      "value": "WAPpublicIP"
+    },
+    "wapLoadBalancerName": {
+      "value": "WAP-External-Load-Balancer"
+    },
+    "wapStorageAccountName": {
+      "value": "domainwapstore"
+    },
+    "wapSubnetName": {
+      "value": "v-frontend"
+    },
+    "wapNetworkSecurityGroupName": {
+      "value": "WAP_NSG"
+    },
+    "wapVMSize": {
+      "value": "Standard_A1"
+    },
+    "domainName": {
+      "value": "domain.com"
+    },
+    "timeZone": {
+      "value": "Central Standard Time"
+    },
+    "existingVirtualNetworkName": {
+      "value": "Virtual_Network"
+    },
+    "existingVirtualNetworkResourceGroup": {
+      "value": "VNET"
+    },
+    "certificateADFSsubject": {
+      "value": "adfs.domain.com"
+    },
+    "certificateLocalPath": {
+      "value": "c:\\Certificates"
+    },
+    "certificateRemotePath": {
+      "value": "\\\\onpremserver.domain.com\\c$\\certs"
+    },
+    "certificatethumbprint": {
+      "value": "hashhere"
+    },
+    "pfxPassword": {
+      "value": ""
+    },
+    "ADFSSubnetPrefix": {
+      "value": "10.0.1.0/24"
+    }
+  }
+}

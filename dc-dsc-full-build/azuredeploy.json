@@ -1,0 +1,423 @@
+﻿{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "assetLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where the files existing in Github"
+      }
+    },
+    "dcAdminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "DC temp local Admin username"
+      }
+    },
+    "dcAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "DC temp local Admin password"
+      }
+    },
+    "dcAvailabilitySetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Availability Set for the Domain Controllers"
+      }
+    },
+    "dc01VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "Prefix to use for domain controller names will end with a number automatically"
+      }
+    },
+    "dc01NetworkInterfaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name for the NIC that attaches to the first DC"
+      }
+    },
+    "dc01StaticIP": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the static IP address for the first DC"
+      }
+    },
+    "dc02VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "Prefix to use for domain controller names will end with a number automatically"
+      }
+    },
+    "dc02NetworkInterfaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name for the NIC that attaches to the second DC"
+      }
+    },
+    "dc02StaticIP": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the static IP address for the second DC"
+      }
+    },
+    "dcNetworkSecurityGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the NSG"
+      }
+    },
+    "dcStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name for the domain controllers to use - must be existing"
+      }
+    },
+    "dcSubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the subnet in the virtual network you want to use for the DCs"
+      }
+    },
+    "dcVMSize": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the allowed list of VM sizes"
+      }
+    },
+    "dcDataDiskSize": {
+      "type": "int",
+      "metadata": {
+        "description": "This is the size of the attached data disk for each DC"
+      }
+    },
+    "domainName": {
+      "type": "string",
+      "metadata": {
+        "description": "FQDN of existing domain"
+      }
+    },
+    "timeZone": {
+      "type": "string",
+      "metadata": {
+        "description": "Time Zone of Servers"
+      }
+    },
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET for the DCs"
+      }
+    },
+    "existingVirtualNetworkResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET resource group for the DCs Servers"
+      }
+    },
+    "imageOffer": {
+      "type": "string",
+      "defaultValue": "WindowsServer",
+      "metadata": {
+        "description": "Image Offer"
+      }
+    },
+    "imagePublisher": {
+      "type": "string",
+      "defaultValue": "MicrosoftWindowsServer",
+      "metadata": {
+        "description": "Image Publisher"
+      }
+    },
+    "imageSKU": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "metadata": {
+        "description": "Image SKU"
+      }
+    },
+    "vmStorageAccountContainerName": {
+      "type": "string",
+      "defaultValue": "vhds",
+      "metadata": {
+        "description": "This is the storage account container name"
+      }
+    }
+  },
+
+  "variables": {
+    "dcModulesURL": "[concat(parameters('assetLocation'),'CreateDC.ps1.zip')]",
+    "dcConfigurationFunction": "CreateDC.ps1\\CreateDC",
+    "dcSubnetRef": "[concat(variables('dcVnetID'),'/subnets/',parameters('dcSubnetName'))]",
+    "dcVnetID": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('existingVirtualNetworkName'))]"
+
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('dcnetworkSecurityGroupName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "DenyFrontend",
+            "properties": {
+              "description": "Deny Frontend",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "10.0.2.0/24",
+              "destinationAddressPrefix": "10.0.0.0/24",
+              "access": "Deny",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "name": "[parameters('dcAvailabilitySetName')]",
+      "type": "Microsoft.Compute/availabilitySets"
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('dc01NetworkInterfaceName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('dc01StaticIP')]",
+              "subnet": {
+                "id": "[variables('dcSubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('dc02NetworkInterfaceName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('dc02StaticIP')]",
+              "subnet": {
+                "id": "[variables('dcSubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('dc01VMName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('dc01NetworkInterfaceName'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('dcAvailabilitySetName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('dcVMSize')]"
+        },
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('dcAvailabilitySetName'))]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('dc01VMName')]",
+          "adminUsername": "[parameters('dcAdminUsername')]",
+          "adminPassword": "[parameters('dcAdminPassword')]",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVMAgent": true
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('dcStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('dc01VMName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "vhd": {
+                "uri": "[concat('http://',parameters('dcStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('dc01VMName'),'datadisk.vhd')]"
+              },
+              "name": "[concat(parameters('dc01VMName'), '-data-disk1')]",
+              "caching": "None",
+              "diskSizeGB": "[parameters('dcDataDiskSize')]",
+              "lun": 0,
+              "createOption": "Empty"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',parameters('dc01NetworkInterfaceName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('dc01VMName'),'/dc01build')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('dc01VMName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "ModulesUrl": "[variables('dcModulesURL')]",
+              "configurationFunction": "[variables('dcConfigurationFunction')]",
+              "properties": {
+                "DomainName": "[parameters('domainName')]",
+                "AdminCreds": {
+                  "UserName": "[parameters('dcadminUserName')]",
+                  "Password": "PrivateSettingsRef:dcAdminPassword"
+                },
+                "TimeZone": "[parameters('timeZone')]"
+              }
+            },
+            "protectedSettings": {
+              "Items": {
+                "dcAdminPassword": "[parameters('dcAdminPassword')]"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('dc02VMName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('dc02NetworkInterfaceName'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('dcAvailabilitySetName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('dcVMSize')]"
+        },
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('dcAvailabilitySetName'))]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('dc02VMName')]",
+          "adminUsername": "[parameters('dcAdminUsername')]",
+          "adminPassword": "[parameters('dcAdminPassword')]",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVMAgent": true
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('dcStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('dc02VMName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "vhd": {
+                "uri": "[concat('http://',parameters('dcStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('dc02VMName'),'datadisk.vhd')]"
+              },
+              "name": "[concat(parameters('dc02VMName'), '-data-disk1')]",
+              "caching": "None",
+              "diskSizeGB": "[parameters('dcDataDiskSize')]",
+              "lun": 0,
+              "createOption": "Empty"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',parameters('dc02NetworkInterfaceName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('dc02VMName'),'/dc02build')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('dc02VMName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "ModulesUrl": "[variables('dcModulesURL')]",
+              "configurationFunction": "[variables('dcConfigurationFunction')]",
+              "properties": {
+                "DomainName": "[parameters('domainName')]",
+                "AdminCreds": {
+                  "UserName": "[parameters('dcadminUserName')]",
+                  "Password": "PrivateSettingsRef:dcAdminPassword"
+                },
+                "TimeZone": "[parameters('timeZone')]"
+              }
+            },
+            "protectedSettings": {
+              "Items": {
+                "dcAdminPassword": "[parameters('dcAdminPassword')]"
+              }
+            }
+          }
+        }
+      ]
+    }
+
+  ],
+  "outputs": {
+  }
+}

@@ -1,0 +1,64 @@
+﻿{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+  "parameters": {
+
+    "assetLocation": {
+      "value": "https://raw.githubusercontent.com/Brian-Carter/azuretemplates/master/dc-dsc-full-build/"
+    },
+    "dcAdminUsername": {
+      "value": "admin123"
+    },
+    "dcAdminPassword": {
+      "value": ""
+    },
+    "dcAvailabilitySetName": {
+      "value": "DC-AvailSet"
+    },
+    "dc01VMName": {
+      "value": "AZDC01"
+    },
+    "dc01NetworkInterfaceName": {
+      "value": "NIC-DC01"
+    },
+    "dc01StaticIP": {
+      "value": "10.0.0.10"
+    },
+    "dc02VMName": {
+      "value": "AZDC02"
+    },
+    "dc02NetworkInterfaceName": {
+      "value": "NIC-DC02"
+    },
+    "dc02StaticIP": {
+      "value": "10.0.0.11"
+    },
+    "dcNetworkSecurityGroupName": {
+      "value": "DC-NSG"
+    },
+    "dcStorageAccountName": {
+      "value": "domaindcstore"
+    },
+    "dcSubnetName": {
+      "value": "V-Identity"
+    },
+    "dcVMSize": {
+      "value": "Standard_A1"
+    },
+    "dcDataDiskSize": {
+      "value": 50
+    },
+    "domainName": {
+      "value": "domain.com"
+    },
+    "timeZone": {
+      "value": "Central Standard Time"
+    },
+    "existingVirtualNetworkName": {
+      "value": "Virtual_Network"
+    },
+    "existingVirtualNetworkResourceGroup": {
+      "value": "VNET"
+    }
+  }
+}

@@ -1,0 +1,612 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "assetLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where the files existing on a network"
+      }
+    },
+    "adfsAdminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "AD FS Local Admin username"
+      }
+    },
+    "adfsAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "AD FS Local Admin password"
+      }
+    },
+    "adfsSAUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "AD FS Service Account username"
+      }
+    },
+    "adfsSAPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "AD FS Service Account password"
+      }
+    },
+    "adfsAvailabilitySetName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the Availability Set for the AD FS Servers"
+      }
+    },
+    "adfs01VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the first AD FS server"
+      }
+    },
+    "adfs01NetworkInterfaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Network interface for the first AD FS Server"
+      }
+    },
+    "adfs01StaticIP": {
+      "type": "string",
+      "metadata": {
+        "description": "Static IP Address for first AD FS Server"
+      }
+    },
+    "adfs02VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the second AD FS server"
+      }
+    },
+    "adfs02NetworkInterfaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Network interface for the second AD FS Server"
+      }
+    },
+    "adfs02StaticIP": {
+      "type": "string",
+      "metadata": {
+        "description": "Static IP Address for second AD FS Server"
+      }
+    },
+    "adfsNetworkSecurityGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the AD FS Network Security Group"
+      }
+    },
+    "adfsPrivateIPAddress": {
+      "type": "string",
+      "metadata": {
+        "description": "VIP of AD FS Servers, must be in the same Subnet Range"
+      }
+    },
+    "adfsLoadBalancerName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the load balancer for the AD FS Servers"
+      }
+    },
+    "adfsStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name for the AD FS Servers to use - must be existing"
+      }
+    },
+    "adfsSubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the subnet in the virtual network you want to use for the AD FS Servers"
+      }
+    },
+    "adfsVMSize": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the VM size"
+      }
+    },
+    "domainName": {
+      "type": "string",
+      "metadata": {
+        "description": "FQDN of existing domain"
+      }
+    },
+    "timeZone": {
+      "type": "string",
+      "metadata": {
+        "description": "Time Zone of AD FS Servers"
+      }
+    },
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET for AD FS Servers"
+      }
+    },
+    "existingVirtualNetworkResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET resource group for AD FS Servers"
+      }
+    },
+    "adfsDisplayName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name to display on AD FS Page - if using a space use extra quores and escape sequence (backslash)"
+      }
+    },
+    "certificateADFSsubject": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of AD FS Certificate and Service"
+      }
+    },
+    "certificateLocalPath": {
+      "type": "string",
+      "metadata": {
+        "description": "Local path for Certificate to be copied into"
+      }
+    },
+    "certificateRemotePath": {
+      "type": "string",
+      "metadata": {
+        "description": "Remote path to download certficate from existing server, just go to folder, no need to call out pfx file"
+      }
+    },
+    "certificateThumbprint": {
+      "type": "string",
+      "metadata": {
+        "description": "Thumbprint of the AD FS Certificate"
+      }
+    },
+    "pfxPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for AD FS pfx File"
+      }
+    },
+    "imagePublisher": {
+      "type": "string",
+      "defaultValue": "MicrosoftWindowsServer",
+      "metadata": {
+        "description": "Image Publisher"
+      }
+    },
+    "imageOffer": {
+      "type": "string",
+      "defaultValue": "WindowsServer",
+      "metadata": {
+        "description": "Image Offer"
+      }
+    },
+    "imageSKU": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "metadata": {
+        "description": "Image SKU"
+      }
+    },
+    "vmStorageAccountContainerName": {
+      "type": "string",
+      "defaultValue": "vhds",
+      "metadata": {
+        "description": "This is the storage account container name"
+      }
+    }
+  },
+  "variables": {
+    "adfsSubnetRef": "[concat(variables('adfsVnetID'),'/subnets/',parameters('adfsSubnetName'))]",
+    "adfsVnetID": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('existingVirtualNetworkName'))]",
+    "adfs01ModulesURL": "[concat(parameters('assetLocation'),'ADFSServer1.ps1.zip')]",
+    "adfs01ConfigurationFunction": "ADFSServer1.ps1\\ADFSserver1",
+    "adfs02ModulesURL": "[concat(parameters('assetLocation'),'ADFSServer2.ps1.zip')]",
+    "adfs02ConfigurationFunction": "ADFSServer2.ps1\\ADFSserver2",
+    "adfsBackendAddressPools": "ADFSBackendPool"
+
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('adfsAvailabilitySetName')]",
+      "location": "[resourceGroup().location]"
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('adfsnetworkSecurityGroupName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "DenyFrontend",
+            "properties": {
+              "description": "Deny Frontend",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "10.0.2.0/24",
+              "destinationAddressPrefix": "10.0.1.0/24",
+              "access": "Deny",
+              "priority": 2000,
+              "direction": "Inbound"
+            }
+          },
+
+          {
+            "name": "AllowHTTPS",
+            "properties": {
+              "description": "Allow HTTPS from Frontend",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "10.0.2.0/24",
+              "destinationAddressPrefix": "10.0.1.0/24",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('adfs01NetworkInterfaceName'))]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/', parameters('adfsnetworkSecurityGroupName'))]",
+        "[concat('Microsoft.Network/loadBalancers/', parameters('adfsloadBalancerName'))]"
+      ],
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('adfsnetworkSecurityGroupName'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('adfs01StaticIP')]",
+              "subnet": {
+                "id": "[variables('adfsSubnetRef')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('adfsloadBalancerName')),'/backendAddressPools/',variables('adfsBackendAddressPools'))]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('adfs02NetworkInterfaceName'))]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/', parameters('adfsnetworkSecurityGroupName'))]",
+        "[concat('Microsoft.Network/loadBalancers/', parameters('adfsloadBalancerName'))]"
+      ],
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('adfsnetworkSecurityGroupName'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig2",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('adfs02StaticIP')]",
+              "subnet": {
+                "id": "[variables('adfsSubnetRef')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('adfsloadBalancerName')),'/backendAddressPools/',variables('adfsBackendAddressPools'))]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/loadBalancers",
+      "name": "[parameters('adfsLoadBalancerName')]",
+      "location": "[resourceGroup().location]",
+
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "properties": {
+              "subnet": {
+                "id": "[variables('adfsSubnetRef')]"
+              },
+              "privateIPAddress": "[parameters('adfsPrivateIPAddress')]",
+              "privateIPAllocationMethod": "Static"
+            },
+            "name": "LoadBalancerFrontend"
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[variables('adfsBackendAddressPools')]"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('adfsLoadBalancerName')), '/frontendIpConfigurations/LoadBalancerFrontend')]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('adfsLoadBalancerName')), '/backendAddressPools/', variables('adfsBackendAddressPools'))]"
+              },
+              "probe": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('adfsLoadBalancerName')), '/probes/adfsilbprobe')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 443,
+              "backendPort": 443,
+              "idleTimeoutInMinutes": 15
+            },
+            "Name": "adfsilbrule"
+          }
+        ],
+        "probes": [
+          {
+            "properties": {
+              "protocol": "Http",
+              "port": 80,
+              "intervalInSeconds": 15,
+              "numberOfProbes": 2,
+              "requestPath": "/adfs/probe"
+            },
+            "name": "adfsilbprobe"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('adfs01VMName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('adfs01NetworkInterfaceName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets',parameters('adfsAvailabilitySetName'))]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('adfsAvailabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('adfsVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('adfs01VMName')]",
+          "adminUsername": "[parameters('adfsAdminUsername')]",
+          "adminPassword": "[parameters('adfsAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('adfsStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('adfs01VMName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('adfs01NetworkInterfaceName')))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('adfs01VMName'),'/dscmodules1')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines',parameters('adfs01VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs01VMName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "ModulesUrl": "[variables('adfs01ModulesURL')]",
+              "configurationFunction": "[variables('adfs01ConfigurationFunction')]",
+              "properties": {
+                "DomainName": "[parameters('domainName')]",
+                "AdminCreds": {
+                  "UserName": "[parameters('adfsadminUserName')]",
+                  "Password": "PrivateSettingsRef:adminPassword"
+                },
+                "pfxadminCreds": {
+                  "Username": "[parameters('adfsAdminUserName')]",
+                  "Password": "PrivateSettingsRef:pfxPassword"
+                },
+                "timeZone": "[parameters('timeZone')]",
+                "thumbprint": "[parameters('certificateThumbprint')]",
+                "MachineName": "[parameters('adfs01VMName')]",
+                "certificatelocalpath": "[parameters('certificatelocalpath')]",
+                "certificateRemotePath": "[parameters('certificateRemotePath')]",
+                "certificateADFSsubject": "[parameters('certificateADFSsubject')]"
+              }
+            },
+            "ProtectedSettings": {
+              "Items": {
+                "adminPassword": "[parameters('adfsadminPassword')]",
+                "pfxPassword": "[parameters('pfxPassword')]"
+              }
+            }
+          }
+        },
+        {
+          "name": "[concat(parameters('adfs01VMName'),'/adfsBuild1')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs01VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('adfs01VMName'),'/extensions/dscmodules1')]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.4",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[concat(parameters('assetLocation'),'adfsbuild1.ps1')]"
+              ],
+              "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File adfsbuild1.ps1',' -domain ',parameters('domainName'),' -CertificateADFSsubject ',parameters('certificateADFSsubject'),' -ADFSdisplayName ',parameters('adfsDisplayName'),' -adfsSAUser ',parameters('adfsSAusername'),' -adfsSAPass ',parameters('adfsSAPassword'),' -adminuser ',parameters('adfsAdminUsername'),' -adminpass ',parameters('adfsAdminPassword'))]"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('adfs02VMName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('adfs02NetworkInterfaceName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets',parameters('adfsAvailabilitySetName'))]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('adfsAvailabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('adfsVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('adfs02VMName')]",
+          "adminUsername": "[parameters('adfsAdminUsername')]",
+          "adminPassword": "[parameters('adfsAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('adfsStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('adfs02VMName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('adfs02NetworkInterfaceName')))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('adfs02VMName'),'/dscmodules2')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines',parameters('adfs02VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs02VMName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "ModulesUrl": "[variables('adfs02ModulesURL')]",
+              "configurationFunction": "[variables('adfs02ConfigurationFunction')]",
+              "properties": {
+                "DomainName": "[parameters('domainName')]",
+                "AdminCreds": {
+                  "UserName": "[parameters('adfsadminUserName')]",
+                  "Password": "PrivateSettingsRef:adminPassword"
+                },
+                "pfxadminCreds": {
+                  "Username": "[parameters('adfsAdminUserName')]",
+                  "Password": "PrivateSettingsRef:pfxPassword"
+                },
+                "timeZone": "[parameters('timeZone')]",
+                "thumbprint": "[parameters('certificateThumbprint')]",
+                "MachineName": "[parameters('adfs02VMName')]",
+                "certificatelocalpath": "[parameters('certificatelocalpath')]",
+                "certificateRemotePath": "[parameters('certificateRemotePath')]",
+                "certificateADFSsubject": "[parameters('certificateADFSsubject')]"
+              }
+            },
+            "ProtectedSettings": {
+              "Items": {
+                "adminPassword": "[parameters('adfsadminPassword')]",
+                "pfxPassword": "[parameters('pfxPassword')]"
+              }
+            }
+          }
+        },
+        {
+          "name": "[concat(parameters('adfs02VMName'),'/adfsBuild2')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs01VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs01VMName'),'/extensions/dscmodules1')]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs01VMName'),'/extensions/adfsbuild1')]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs02VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('adfs02VMName'),'/extensions/dscmodules2')]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.4",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[concat(parameters('assetLocation'),'adfsbuild2.ps1')]"
+              ],
+              "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File adfsbuild2.ps1',' -domain ',parameters('domainName'),' -adfsPrimaryServer ',parameters('adfs01VMName'),' -CertificateADFSsubject ',parameters('certificateADFSsubject'),' -adfsSAUser ',parameters('adfsSAusername'),' -adfsSAPass ',parameters('adfsSAPassword'),' -adminuser ',parameters('adfsAdminUsername'),' -adminpass ',parameters('adfsAdminPassword'))]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+  }
+}

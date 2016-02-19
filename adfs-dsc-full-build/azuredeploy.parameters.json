@@ -1,0 +1,87 @@
+﻿{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+  "parameters": {
+    "assetLocation": {
+      "value": "https://raw.githubusercontent.com/Brian-Carter/azuretemplates/master/adfs-dsc-full-build/"
+    },
+    "adfsAdminUsername": {
+      "value": "admin123"
+    },
+    "adfsAdminPassword": {
+      "value": ""
+    },
+    "adfsAvailabilitySetName": {
+      "value": "adfsAvailSet"
+    },
+    "adfs01VMName": {
+      "value": "ADFS01"
+    },
+    "adfs01NetworkInterfaceName": {
+      "value": "NIC-ADFS01"
+    },
+    "adfs01StaticIP": {
+      "value": "10.0.1.50"
+    },
+    "adfs02VMName": {
+      "value": "ADFS02"
+    },
+    "adfs02NetworkInterfaceName": {
+      "value": "NIC-ADFS02"
+    },
+    "adfs02StaticIP": {
+      "value": "10.0.1.51"
+    },
+    "adfsPrivateIPAddress": {
+      "value": "10.0.1.100"
+    },
+    "adfsLoadBalancerName": {
+      "value": "ADFS-Internal-Loadbalancer"
+    },
+    "adfsStorageAccountName": {
+      "value": "domainadfsstore"
+    },
+    "adfsSubnetName": {
+      "value": "V-servers"
+    },
+    "adfsnetworkSecurityGroupName": {
+      "value": "ADFS-NSG"
+    },
+    "adfsVMSize": {
+      "value": "Standard_A1"
+    },
+    "domainName": {
+      "value": "domain.com"
+    },
+    "timeZone": {
+      "value": "Central Standard Time"
+    },
+    "existingVirtualNetworkName": {
+      "value": "Virtual_Network"
+    },
+    "existingVirtualNetworkResourceGroup": {
+      "value": "VNET"
+    },
+    "adfsDisplayName": {
+      "value": "\"NO Touch ADFS\""
+    },
+    "certificateADFSsubject": {
+      "value": "adfs.domain.com"
+    },
+    "certificateLocalPath": {
+      "value": "c:\\Certificates"
+    },
+    "certificateRemotePath": {
+      "value": "\\\\onpremserver.comain.com\\c$\\certs"
+    },
+    "certificatethumbprint": {
+      "value": "hashhere"
+    },
+    "gmsa": {
+      "value": "domain\\adfsgmsa$"
+    },
+    "pfxPassword": {
+      "value": ""
+    }
+  }
+}

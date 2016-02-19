@@ -1,0 +1,757 @@
+﻿{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+  "parameters": {
+    "assetLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where the files existing in Github"
+      }
+    },
+    "wapAdminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "WAP Local admin username"
+      }
+    },
+    "wapAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "WAP Local Admin password"
+      }
+    },
+    "wapAvailabilitySetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Availability Set for the WAP Servers"
+      }
+    },
+    "wap01VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Virtual Machine for the first WAP Server"
+      }
+    },
+    "wap01NetworkInterfaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Network interface for the first WAP Server"
+      }
+    },
+    "wap01StaticIP": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the Static IP address of the first WAP Server"
+      }
+    },
+    "wap02VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Virtual Machine for the second WAP Server"
+      }
+    },
+    "wap02NetworkInterfaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Network interface for the second WAP Server"
+      }
+    },
+    "wap02StaticIP": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the Static IP address of the second WAP Server"
+      }
+    },
+    "dnsNameforWAPLBIP": {
+      "type": "string",
+      "metadata": {
+        "description": "DNS for WAP Load Balancer IP"
+      }
+    },
+    "wapPublicIPAddressName": {
+      "type": "string",
+      "metadata": {
+        "description": "Public IP Name for the WAP Servers"
+      }
+    },
+    "wapLoadBalancerName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the load balancer for the WAP Servers"
+      }
+    },
+    "wapStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name for the WAP servers to use - must be existing"
+      }
+    },
+    "wapSubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the subnet in the virtual network you want to use for the WAP Servers"
+      }
+    },
+    "wapNetworkSecurityGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the WAP Network Security Group"
+      }
+    },
+    "wapVMSize": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the VM size for the WAP"
+      }
+    },
+    "domainName": {
+      "type": "string",
+      "metadata": {
+        "description": "Domain Name of existing domain that has ADFS configured"
+      }
+    },
+    "timeZone": {
+      "type": "string",
+      "metadata": {
+        "description": "Time Zone the Servers are in"
+      }
+    },
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET for WAP Servers"
+      }
+    },
+    "existingVirtualNetworkResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET resource group for WAP Servers"
+      }
+    },
+    "certificateADFSsubject": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of ADFS Certificate"
+      }
+    },
+    "certificateLocalPath": {
+      "type": "string",
+      "metadata": {
+        "description": "Local path for Certificate to reside"
+      }
+    },
+    "certificateRemotePath": {
+      "type": "string",
+      "metadata": {
+        "description": "Remote path to download certficate from"
+      }
+    },
+    "certificateThumbprint": {
+      "type": "string",
+      "metadata": {
+        "description": "Thumbprint of the Certificate"
+      }
+    },
+    "pfxPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for pfx File"
+      }
+    },
+    "ADFSSubnetPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "CIDR value for the ADFS Server's Subnet"
+      }
+    },
+    "imagePublisher": {
+      "type": "string",
+      "defaultValue": "MicrosoftWindowsServer",
+      "metadata": {
+        "description": "Image Publisher"
+      }
+    },
+    "imageOffer": {
+      "type": "string",
+      "defaultValue": "WindowsServer",
+      "metadata": {
+        "description": "Image Offer"
+      }
+    },
+    "imageSKU": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "metadata": {
+        "description": "Image SKU"
+      }
+    },
+    "vmStorageAccountContainerName": {
+      "type": "string",
+      "defaultValue": "vhds",
+      "metadata": {
+        "description": "This is the storage account container name"
+      }
+    }
+  },
+  "variables": {
+    "wapBackendAddressPools": "wapBackendPool",
+    "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',parameters('wapPublicIPAddressName'))]",
+    "wapVnetID": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('existingVirtualNetworkName'))]",
+    "wapSubnetRef": "[concat(variables('wapVnetID'),'/subnets/',parameters('wapSubnetName'))]",
+    "wapFlbID": "[resourceId('Microsoft.Network/loadBalancers',parameters('wapLoadBalancerName'))]",
+    "frontEndIPConfigID": "[concat(variables('wapFlbID'),'/frontendIPConfigurations/wapLoadBalancerFrontEnd')]",
+    "publicIPAddressType": "Dynamic",
+    "waplbPoolID": "[concat(variables('wapFlbID'),'/backendAddressPools/',variables('wapBackendAddressPools'))]",
+    "waplbProbeID": "[concat(variables('wapFlbID'),'/probes/wapHttpProbe')]",
+    "wap01ModulesURL": "[concat(parameters('assetLocation'),'wapDSC01.ps1.zip')]",
+    "wap01ConfigurationFunction": "wapDSC01.ps1\\Wapserver01",
+    "wap02ModulesURL": "[concat(parameters('assetLocation'),'wapDSC02.ps1.zip')]",
+    "wap02ConfigurationFunction": "wapDSC02.ps1\\Wapserver02",
+    "nicAddNSGTemplateUri": "[concat(parameters('assetLocation'),'nicupdate.json')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('wapAvailabilitySetName')]",
+      "location": "[resourceGroup().location]"
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('wapNetworkSecurityGroupName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "Allow-443",
+            "properties": {
+              "description": "Allow 443",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-443-To-Backend",
+            "properties": {
+              "description": "Allow 443",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "[parameters('adfsSubnetPrefix')]",
+              "access": "Allow",
+              "priority": 300,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "Deny-all-to-virtual-networks",
+            "properties": {
+              "description": "Deny All Outbound Internal Traffic",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Deny",
+              "priority": 4000,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "allow-only-RDP-from-internal",
+            "properties": {
+              "description": "Allow only RDP from Internal networks",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "deny-all-from-Internal",
+            "properties": {
+              "description": "Deny all from Internal",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 1001,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[parameters('wappublicIPAddressName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('dnsNameforWAPLBIP')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('wap01NetworkInterfaceName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/loadBalancers/', parameters('wapLoadBalancerName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig3",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('wap01StaticIP')]",
+              "subnet": {
+                "id": "[variables('wapSubnetRef')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[variables('waplbPoolID')]"
+                }
+              ],
+              "loadBalancerInboundNatRules": [
+                {
+                  "id": "[concat(variables('wapFlbID'),'/inboundNatRules/RDP-WAP01')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('wap02NetworkInterfaceName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/loadBalancers/', parameters('wapLoadBalancerName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig4",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('wap02StaticIP')]",
+              "subnet": {
+                "id": "[variables('wapSubnetRef')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[variables('waplbPoolID')]"
+                }
+              ],
+              "loadBalancerInboundNatRules": [
+                {
+                  "id": "[concat(variables('wapFlbID'),'/inboundNatRules/RDP-WAP02')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "name": "[parameters('wapLoadBalancerName')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', parameters('wapPublicIPAddressName'))]"
+      ],
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "WapLoadBalancerFrontEnd",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[variables('publicIPAddressID')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[variables('wapBackendAddressPools')]"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "name": "WAPLBRule",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontEndIPConfigID')]"
+              },
+              "backendAddressPool": {
+                "id": "[variables('waplbPoolID')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 443,
+              "backendPort": 443,
+              "enableFloatingIP": false,
+              "idleTimeoutInMinutes": 5,
+              "probe": {
+                "id": "[variables('waplbProbeID')]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "wapHttpProbe",
+            "properties": {
+              "protocol": "Http",
+              "port": 80,
+              "intervalInSeconds": 5,
+              "numberOfProbes": 2,
+              "requestPath": "/adfs/probe"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('wap01VMName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('wap01NetworkInterfaceName'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('wapAvailabilitySetName'))]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('wapAvailabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('wapVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('wap01VMName')]",
+          "adminUsername": "[parameters('wapAdminUsername')]",
+          "adminPassword": "[parameters('wapAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('wapStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('wap01VMName'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',parameters('wap01NetworkInterfaceName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('wap01VMname'),'/wapDSC01')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('wap01VMName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "modulesUrl": "[variables('wap01ModulesURL')]",
+              "configurationFunction": "[variables('wap01ConfigurationFunction')]",
+              "properties": {
+                "pfxadminCreds": {
+                  "Username": "[parameters('wapAdminUserName')]",
+                  "Password": "PrivateSettingsRef:pfxPassword"
+                },
+                "domainadminCreds": {
+                  "Username": "[parameters('wapAdminUserName')]",
+                  "Password": "PrivateSettingsRef:domainPassword"
+                },
+                "domainName": "[parameters('domainName')]",
+                "timeZone": "[parameters('timeZone')]",
+                "certificateRemotePath": "[parameters('certificateRemotePath')]",
+                "certificateLocalPath": "[parameters('certificateLocalPath')]",
+                "certificateADFSsubject": "[parameters('certificateADFSsubject')]",
+                "thumbprint": "[parameters('certificateThumbprint')]"
+
+              }
+            },
+            "ProtectedSettings": {
+              "Items": {
+                "pfxPassword": "[parameters('pfxPassword')]",
+                "domainPassword": "[parameters('wapAdminPassword')]"
+              }
+            }
+          }
+        },
+        {
+          "name": "[concat(parameters('wap01VMName'),'/wap01build')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('wap01VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('wap01VMName'),'/extensions/wapDSC01')]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.4",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[concat(parameters('assetLocation'),'wap01build.ps1')]"
+              ],
+              "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File wap01build.ps1',' -CertificateADFSsubject ',parameters('certificateADFSsubject'),' -domain ',parameters('domainName'),' -admincred ',parameters('wapAdminUsername'),' -adminpass ',parameters('wapAdminPassword'))]"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('wap02VMName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('wap02NetworkInterfaceName'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('wapAvailabilitySetName'))]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('wapAvailabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('wapVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('wap02VMName')]",
+          "adminUsername": "[parameters('wapAdminUsername')]",
+          "adminPassword": "[parameters('wapAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('wapStorageAccountName'),'.blob.core.windows.net/vhds/',parameters('wap02VMName'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',parameters('wap02NetworkInterfaceName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('wap02VMname'),'/wapDSC02')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('wap02VMName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "modulesUrl": "[variables('wap02ModulesURL')]",
+              "configurationFunction": "[variables('wap02ConfigurationFunction')]",
+              "properties": {
+                "pfxadminCreds": {
+                  "Username": "[parameters('wapAdminUserName')]",
+                  "Password": "PrivateSettingsRef:pfxPassword"
+                },
+                "domainadminCreds": {
+                  "Username": "[parameters('wapAdminUserName')]",
+                  "Password": "PrivateSettingsRef:domainPassword"
+                },
+                "domainName": "[parameters('domainName')]",
+                "timeZone": "[parameters('timeZone')]",
+                "certificateRemotePath": "[parameters('certificateRemotePath')]",
+                "certificateLocalPath": "[parameters('certificateLocalPath')]",
+                "certificateADFSsubject": "[parameters('certificateADFSsubject')]",
+                "thumbprint": "[parameters('certificateThumbprint')]"
+
+              }
+            },
+            "ProtectedSettings": {
+              "Items": {
+                "pfxPassword": "[parameters('pfxPassword')]",
+                "domainPassword": "[parameters('wapAdminPassword')]"
+              }
+            }
+          }
+        },
+        {
+          "name": "[concat(parameters('wap02VMName'),'/wap02build')]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('wap02VMName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('wap02VMName'),'/extensions/wapDSC02')]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.4",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[concat(parameters('assetLocation'),'wap02build.ps1')]"
+              ],
+              "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File wap02build.ps1',' -CertificateADFSsubject ',parameters('certificateADFSsubject'),' -domain ',parameters('domainName'),' -admincred ',parameters('wapAdminUsername'),' -adminpass ',parameters('wapAdminPassword'))]"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "[concat('update-',parameters('wap01NetworkInterfaceName'))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',parameters('wap01VMName'),'/extensions/wap01build')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicAddNSGTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "nicName": {
+            "value": "[parameters('wap01NetworkInterfaceName')]"
+          },
+          "ipConfigurations": {
+            "value": [
+              {
+                "name": "ipconfig3",
+                "properties": {
+                  "privateIPAllocationMethod": "Static",
+                  "privateIPAddress": "[parameters('wap01StaticIP')]",
+                  "subnet": {
+                    "id": "[variables('wapSubnetRef')]"
+                  },
+                  "loadBalancerBackendAddressPools": [
+                    {
+                      "id": "[variables('waplbPoolID')]"
+                    }
+                  ],
+                  "loadBalancerInboundNatRules": [
+                    {
+                      "id": "[concat(variables('wapFlbID'),'/inboundNatRules/RDP-WAP01')]"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "id": {
+            "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('wapNetworkSecurityGroupName'))]"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('update-',parameters('wap02NetworkInterfaceName'))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',parameters('wap02VMName'),'/extensions/wap02build')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicAddNSGTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "nicName": {
+            "value": "[parameters('wap02NetworkInterfaceName')]"
+          },
+          "ipConfigurations": {
+            "value": [
+              {
+                "name": "ipconfig3",
+                "properties": {
+                  "privateIPAllocationMethod": "Static",
+                  "privateIPAddress": "[parameters('wap02StaticIP')]",
+                  "subnet": {
+                    "id": "[variables('wapSubnetRef')]"
+                  },
+                  "loadBalancerBackendAddressPools": [
+                    {
+                      "id": "[variables('waplbPoolID')]"
+                    }
+                  ],
+                  "loadBalancerInboundNatRules": [
+                    {
+                      "id": "[concat(variables('wapFlbID'),'/inboundNatRules/RDP-WAP02')]"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "id": {
+            "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('wapNetworkSecurityGroupName'))]"
+          }
+        }
+      }
+    }
+  ],
+    "outputs": {
+    }
+}
