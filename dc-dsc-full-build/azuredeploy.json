@@ -162,12 +162,12 @@
       "properties": {
         "securityRules": [
           {
-            "name": "DenyFrontend",
+            "name": "DenyRDPfromFrontend",
             "properties": {
-              "description": "Deny Frontend",
+              "description": "Deny RDP From Frontend",
               "protocol": "*",
               "sourcePortRange": "*",
-              "destinationPortRange": "*",
+              "destinationPortRange": "3389",
               "sourceAddressPrefix": "10.0.2.0/24",
               "destinationAddressPrefix": "10.0.0.0/24",
               "access": "Deny",
