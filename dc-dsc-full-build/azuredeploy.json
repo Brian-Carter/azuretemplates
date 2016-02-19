@@ -189,7 +189,9 @@
       "type": "Microsoft.Network/networkInterfaces",
       "name": "[parameters('dc01NetworkInterfaceName')]",
       "location": "[resourceGroup().location]",
-      "dependson": "[concat('Microsoft.Network/networkSecurityGroups/',parameters('dcnetworkSecurityGroupName'))]
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/',parameters('dcnetworkSecurityGroupName'))]"
+      ],
       "properties": {
         "ipConfigurations": [
           {
@@ -210,7 +212,9 @@
       "type": "Microsoft.Network/networkInterfaces",
       "name": "[parameters('dc02NetworkInterfaceName')]",
       "location": "[resourceGroup().location]",
-      "dependson": "[concat('Microsoft.Network/networkSecurityGroups/',parameters('dcnetworkSecurityGroupName'))]
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/',parameters('dcnetworkSecurityGroupName'))]"
+      ],
       "properties": {
         "ipConfigurations": [
           {
