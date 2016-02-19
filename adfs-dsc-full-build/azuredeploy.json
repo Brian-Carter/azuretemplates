@@ -377,7 +377,8 @@
       "name": "[parameters('adfs01VMName')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Network/networkInterfaces/', parameters('adfs01NetworkInterfaceName'))]"
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('adfs01NetworkInterfaceName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets',parameters('adfsAvailabilitySetName'))]"
       ],
       "properties": {
         "availabilitySet": {
@@ -489,7 +490,8 @@
       "name": "[parameters('adfs02VMName')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Network/networkInterfaces/', parameters('adfs02NetworkInterfaceName'))]"
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('adfs02NetworkInterfaceName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets',parameters('adfsAvailabilitySetName'))]"
       ],
       "properties": {
         "availabilitySet": {
