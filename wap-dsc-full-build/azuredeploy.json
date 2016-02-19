@@ -314,7 +314,8 @@
       "name": "[parameters('wap01NetworkInterfaceName')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Network/loadBalancers/', parameters('wapLoadBalancerName'))]"
+        "[concat('Microsoft.Network/loadBalancers/', parameters('wapLoadBalancerName'))]",
+        "[concat('Microsoft.Network/networkSecurityGroups/',parameters('wapNetworkSecurityGroupName'))]"
       ],
       "properties": {
         "ipConfigurations": [
@@ -347,7 +348,8 @@
       "name": "[parameters('wap02NetworkInterfaceName')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Network/loadBalancers/', parameters('wapLoadBalancerName'))]"
+        "[concat('Microsoft.Network/loadBalancers/', parameters('wapLoadBalancerName'))]",
+        "[concat('Microsoft.Network/networkSecurityGroups/',parameters('wapNetworkSecurityGroupName'))]"
       ],
       "properties": {
         "ipConfigurations": [
